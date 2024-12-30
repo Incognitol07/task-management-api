@@ -1,0 +1,11 @@
+fastapi[all]~=0.99
+sqlalchemy~=2.0
+python-dotenv~=1.0
+pyjwt~=2.8
+passlib[bcrypt]~=1.7
+databases~=0.5
+psycopg2-binary
+uvicorn[standard]~=0.23
+pytest~=7.4
+requests
+alembic
