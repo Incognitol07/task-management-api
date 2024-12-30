@@ -45,8 +45,8 @@ Managing tasks can be overwhelming without an efficient system. This API simplif
 #### 1. Clone the Repository  
 
 ```bash  
-git clone https://github.com/purple-laundry-services/purple-laundry-backend
-cd purple-laundry-backend
+git clone https://github.com/Incognitol07/task-management-api
+cd task-management-api
 ```  
 
 #### 2. Set Up Virtual Environment  
