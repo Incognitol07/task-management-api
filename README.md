@@ -101,35 +101,6 @@ Create a `.env` file:
   copy .env.example .env  
   ```  
 
-Edit the `.env` file and provide the required configuration:  
-
-```plaintext  
-ENVIRONMENT=development  
-DATABASE_URL=postgresql://<username>:<password>@<host>:<port>/<dbname>  
-JWT_SECRET_KEY=your_secret_key  
-```  
-
----
-
-### Database Setup  
-
-#### Using PostgreSQL  
-
-1. Create a database in your PostgreSQL instance.  
-2. Update the `DATABASE_URL` in your `.env` file with the database details.  
-
-#### Optional: Using SQLite  
-
-1. Modify the `.env` file:  
-
-   ```plaintext
-   DATABASE_URL=sqlite:///purple_laundry.db  
-   ```  
-
-2. No additional setup is required for SQLite.  
-
----
-
 ### Running the Application  
 
 #### With Docker  

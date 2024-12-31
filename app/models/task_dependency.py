@@ -1,3 +1,5 @@
+# app/models/task_dependency.py
+
 from sqlalchemy import Column, Integer, ForeignKey
 from app.database import Base
 

@@ -9,6 +9,9 @@ from contextlib import asynccontextmanager
 from app.database import engine, Base
 from app.config import settings
 from app.utils import logger
+from app.routers import (
+    auth_router
+)
 
 # Create the FastAPI application
 @asynccontextmanager
@@ -41,7 +44,7 @@ app.add_middleware(
 Base.metadata.create_all(bind=engine)
 
 # Include routers
-
+app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
 
 
 # Middleware to log route endpoints
