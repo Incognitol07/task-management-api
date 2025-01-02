@@ -1,6 +1,8 @@
 # app/models/notification.py
 
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey
+import uuid
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.database import Base
@@ -22,10 +24,10 @@ class Notification(Base):
 
     __tablename__ = "notifications"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     message = Column(String, nullable=False)
-    task_id = Column(Integer, ForeignKey("tasks.id"), nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    task_id = Column(UUID(as_uuid=True), ForeignKey("tasks.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     is_read = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=datetime.now, nullable=False)
     sent_at = Column(DateTime, nullable=True)

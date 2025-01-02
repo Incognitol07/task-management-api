@@ -9,3 +9,10 @@ from .auth import (
     GoogleLogin,
     UserResponse
 )
+from .task import (
+    CreateTask,
+    TaskResponse
+)
+from .notifications import (
+    NotificationResponse
+)

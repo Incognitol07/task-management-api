@@ -8,7 +8,7 @@ load_dotenv()
 
 class Settings(BaseSettings):
     # Application settings
-    APP_NAME: str = "Purple Laundry API"
+    APP_NAME: str = "Task Management API"
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")  # Default to 'development'
     DEBUG: bool = ENVIRONMENT == "development"
 

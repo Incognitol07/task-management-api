@@ -10,7 +10,9 @@ from app.database import engine, Base
 from app.config import settings
 from app.utils import logger
 from app.routers import (
-    auth_router
+    auth_router,
+    task_router,
+    notification_router
 )
 
 # Create the FastAPI application
@@ -25,7 +27,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title=settings.APP_NAME,
-    description="An API to manage dry cleaning",
+    description="An API to manage tasks",
     version="1.0.0",
     debug=settings.DEBUG,  # Enable debug mode if in development
     lifespan=lifespan,
@@ -45,6 +47,8 @@ Base.metadata.create_all(bind=engine)
 
 # Include routers
 app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
+app.include_router(task_router, prefix="/tasks", tags=["Task"])
+app.include_router(notification_router, prefix="/notification", tags=["Notification"])
 
 
 # Middleware to log route endpoints

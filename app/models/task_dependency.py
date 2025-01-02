@@ -1,6 +1,8 @@
 # app/models/task_dependency.py
 
-from sqlalchemy import Column, Integer, ForeignKey
+import uuid
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, ForeignKey
 from app.database import Base
 
 
@@ -16,6 +18,6 @@ class TaskDependency(Base):
 
     __tablename__ = "task_dependencies"
 
-    id = Column(Integer, primary_key=True, index=True)
-    task_id = Column(Integer, ForeignKey("tasks.id"), nullable=False)
-    dependent_task_id = Column(Integer, ForeignKey("tasks.id"), nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    task_id = Column(UUID(as_uuid=True), ForeignKey("tasks.id"), nullable=False)
+    dependent_task_id = Column(UUID(as_uuid=True), ForeignKey("tasks.id"), nullable=False)

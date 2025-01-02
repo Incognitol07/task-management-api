@@ -1,4 +1,6 @@
 # tests/test_auth.py
+from app.utils import create_refresh_token, create_access_token
+
 
 # Test cases
 def test_register_user(client):
@@ -123,4 +125,30 @@ def test_delete_account(client):
     )
     assert response.status_code == 200
     assert response.json()["detail"].startswith("Deleted account")
+
+# Example user data, which you would typically get from the database
+fake_email = {"sub": "nonexistent@gmail.com"}
+no_data = {}
+
+# Generate the access token
+invalid_access_token = create_access_token(data=fake_email)
+
+# Generate the refresh token (you would also pass user data)
+invalid_refresh_token = create_refresh_token(data=no_data)
+
+def test_delete_nonexistent_account(client):
+    response = client.delete(
+        "/auth/account",
+        headers={"Authorization": f"Bearer {invalid_access_token}"},
+    )
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Could not validate credentials"
+
+def test_refresh_token_invalid_token(client):
+    response = client.post(
+        "/auth/user/refresh-token",
+        json={"refresh_token": invalid_refresh_token},
+    )
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Invalid refresh token payload"
 

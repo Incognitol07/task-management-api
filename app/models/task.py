@@ -1,9 +1,25 @@
 # app/models/task.py
 
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey
+import uuid
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, String, DateTime, Boolean, ForeignKey, Enum
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.database import Base
+from enum import Enum as PyEnum
+
+
+# Define the priority options using Python's Enum
+class TaskPriority(PyEnum):
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low" 
+
+# Define the status options using Python's Enum
+class TaskStatus(PyEnum):
+    PENDING = "pending"
+    COMPLETE = "complete" 
+
 
 
 class Task(Base):
@@ -30,15 +46,15 @@ class Task(Base):
 
     __tablename__ = "tasks"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     title = Column(String, nullable=False)
     description = Column(String, nullable=True)
     due_date = Column(DateTime, nullable=False)
-    status = Column(String, default="Pending", nullable=False)
-    priority = Column(String, default="Medium", nullable=False)
+    status = Column(Enum(TaskStatus), nullable=False, default=TaskStatus.PENDING)
+    priority = Column(Enum(TaskPriority), nullable=False, default=TaskPriority.MEDIUM)
     is_recurring = Column(Boolean, default=False, nullable=False)
     recurrence_interval = Column(String, nullable=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime, default=datetime.now, nullable=False)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)
 
