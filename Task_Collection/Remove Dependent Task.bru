@@ -1,11 +1,11 @@
 meta {
-  name: Remove Task
+  name: Remove Dependent Task
   type: http
-  seq: 5
+  seq: 13
 }
 
 delete {
-  url: http://127.0.0.1:8000/tasks/7878624d-ff53-4227-96b0-ea0195932ea6
+  url: http://127.0.0.1:8000/tasks/7878624d-ff53-4227-96b0-ea0195932ea6/dependencies/{dependent_task_id}
   body: none
   auth: none
 }

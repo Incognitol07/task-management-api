@@ -1,11 +1,11 @@
 meta {
-  name: Remove Task
+  name: Run Reminders
   type: http
-  seq: 5
+  seq: 9
 }
 
-delete {
-  url: http://127.0.0.1:8000/tasks/7878624d-ff53-4227-96b0-ea0195932ea6
+post {
+  url: http://127.0.0.1:8000/tasks/reminders
   body: none
   auth: none
 }

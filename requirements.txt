@@ -11,3 +11,7 @@ requests
 alembic
 redis
 fastapi-limiter
+celery[redis] 
+redis 
+celery[sqlalchemy]
+flower

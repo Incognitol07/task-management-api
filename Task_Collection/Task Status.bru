@@ -1,11 +1,11 @@
 meta {
-  name: Remove Task
+  name: Task Status
   type: http
-  seq: 5
+  seq: 14
 }
 
-delete {
-  url: http://127.0.0.1:8000/tasks/7878624d-ff53-4227-96b0-ea0195932ea6
+get {
+  url: http://127.0.0.1:8000/tasks/status/7878624d-ff53-4227-96b0-ea0195932ea6
   body: none
   auth: none
 }

@@ -1,4 +1,4 @@
-"""Purple Laundry API"""
+"""Task Management API"""
 
 from .main import app  
 __all__ = ["app"] 
