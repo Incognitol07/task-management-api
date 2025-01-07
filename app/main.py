@@ -1,9 +1,6 @@
 # app/main.py
 
-from fastapi import (
-    FastAPI,
-    Request
-)
+from fastapi import FastAPI,Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_limiter import FastAPILimiter
 from redis.asyncio import Redis
@@ -15,7 +12,10 @@ from app.routers import (
     auth_router,
     task_router,
     notification_router,
-    api_key_router
+    api_key_router,
+    automation_router,
+    dependency_router,
+    recurrence_router
 )
 
 # Create the FastAPI application
@@ -25,6 +25,7 @@ async def lifespan(app: FastAPI):
     print("Starting up the application...")
     redis = Redis.from_url("redis://localhost", decode_responses=True)
     await FastAPILimiter.init(redis)
+    Base.metadata.create_all(bind=engine)
     try:
         yield
     finally:
@@ -47,39 +48,30 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize database (create tables if they don't exist)
-Base.metadata.create_all(bind=engine)
-
 # Include routers
 app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
 app.include_router(task_router, prefix="/tasks", tags=["Task"])
+app.include_router(recurrence_router, prefix="/recurring-tasks", tags=["Recurring Tasks"])
+app.include_router(dependency_router, prefix="/dependent-tasks", tags=["Dependents Task"])
+app.include_router(automation_router, prefix="/automation", tags=["Automation"])
 app.include_router(notification_router, prefix="/notification", tags=["Notification"])
 app.include_router(api_key_router, prefix="/api-key", tags=["API Key"])
 
-
-# Middleware to log route endpoints
+# Middleware
 @app.middleware("http")
-async def log_requests(request: Request, call_next):
+async def log_requests_and_api_key_usage(request: Request, call_next):
     endpoint = request.url.path
     method = request.method
     client_ip = request.client.host
+    token = request.headers.get("Authorization")
 
     logger.info(f"Request: {method} {endpoint} from {client_ip}")
-    
+    if token:
+        logger.info(f"API key used: {token.split()[1]}")
+
     response = await call_next(request)
-    
     logger.info(f"Response: {method} {endpoint} returned {response.status_code}")
     return response
-
-
-@app.middleware("http")
-async def log_api_key_usage(request: Request, call_next):
-    token = request.headers.get("Authorization")
-    if token:
-        logger.info(f"API key used: {token}")
-    response = await call_next(request)
-    return response
-
 
 
 # Root endpoint for health check

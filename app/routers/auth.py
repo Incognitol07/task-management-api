@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 from app.schemas import (
     UserCreate,
     UserLogin,
@@ -25,9 +26,6 @@ from app.database import get_db
 # Create an instance of APIRouter to handle authentication routes
 router = APIRouter()
 
-
-
-
 # Register route to create a new user account
 @router.post("/register", response_model=RegisterResponse)
 async def register(user: UserCreate, db: Session = Depends(get_db)):
@@ -44,57 +42,61 @@ async def register(user: UserCreate, db: Session = Depends(get_db)):
     Returns:
         User: The newly created user object.
     """
-    db_user = db.query(User).filter(User.username == user.username).first()
-    if db_user:
-        logger.warning(f"Attempt to register with an existing username: {user.username}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username already registered"
+    try:
+        db_user = db.query(User).filter(User.username == user.username).first()
+        if db_user:
+            logger.warning(f"Attempt to register with an existing username: {user.username}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username already registered"
+            )
+
+        db_email = db.query(User).filter(User.email == user.email).first()
+        if db_email:
+            logger.warning(f"Attempt to register with an existing email: {user.email}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered"
+            )
+
+        # Hash the password before storing
+        hashed_password = hash_password(user.password)
+
+        # Generate API Key
+        api_key = create_api_key(data={"sub": user.username})
+
+        new_user = User(
+            username=user.username, 
+            email=user.email, 
+            hashed_password=hashed_password,
+            api_key = api_key
         )
 
-    db_email = db.query(User).filter(User.email == user.email).first()
-    if db_email:
-        logger.warning(f"Attempt to register with an existing email: {user.email}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
+        # Add the new user to the database
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+
+        db_user = (
+            db.query(User)
+            .filter(
+                User.username == user.username, 
+                User.hashed_password == hashed_password
+            )
+            .first()
         )
 
-    # Hash the password before storing
-    hashed_password = hash_password(user.password)
-
-    # Generate API Key
-    api_key = create_api_key(data={"sub": user.username})
-
-    new_user = User(
-        username=user.username, 
-        email=user.email, 
-        hashed_password=hashed_password,
-        api_key = api_key
-    )
-
-    # Add the new user to the database
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-
-    db_user = (
-        db.query(User)
-        .filter(
-            User.username == user.username, 
-            User.hashed_password == hashed_password
+        logger.info(
+            f"New user registered successfully: {new_user.username} ({new_user.email})."
         )
-        .first()
-    )
-
-    logger.info(
-        f"New user registered successfully: {new_user.username} ({new_user.email})."
-    )
-    return {
-        "username": user.username,
-        "email": user.email,
-        "message": "Registered successfully"
-    }
+        return {
+            "username": user.username,
+            "email": user.email,
+            "message": "Registered successfully"
+        }
+    except SQLAlchemyError as e:
+        logger.error(f"Database error: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error")
 
 
 # Login route for user authentication and token generation
@@ -113,29 +115,33 @@ async def user_login(user: UserLogin, db: Session = Depends(get_db)):
     Returns:
         dict: A dictionary containing the access token and token type.
     """
-    # Query the database for the user and verify password
-    db_user = (
-        db.query(User)
-        .filter(User.email == user.email)
-        .first()
-    )
-
-    if not db_user or not verify_password(user.password, db_user.hashed_password):
-        logger.warning(f"Failed login attempt for email: {user.email}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid credentials"
+    try:
+        # Query the database for the user and verify password
+        db_user = (
+            db.query(User)
+            .filter(User.email == user.email)
+            .first()
         )
-    
 
-    #Get API Key
-    api_key = db_user.api_key
+        if not db_user or not verify_password(user.password, db_user.hashed_password):
+            logger.warning(f"Failed login attempt for email: {user.email}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid credentials"
+            )
+        
 
-    logger.info(f"User '{db_user.username}' logged in successfully.")
-    return {
-        "api_key": api_key,
-        "token_type": "bearer",
-        "username": db_user.username
-    }
+        #Get API Key
+        api_key = db_user.api_key
+
+        logger.info(f"User '{db_user.username}' logged in successfully.")
+        return {
+            "api_key": api_key,
+            "token_type": "bearer",
+            "username": db_user.username
+        }
+    except SQLAlchemyError as e:
+        logger.error(f"Database error: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error")
 
 
 # Protected route example requiring authentication
@@ -150,9 +156,13 @@ async def protected_route(current_user: User = Depends(get_current_user)):
     Returns:
         dict: A greeting message with the username of the authenticated user.
     """
-    return {
-        "detail": f"Hello, {current_user.username}! You have access to this protected route."
-    }
+    try:
+        return {
+            "detail": f"Hello, {current_user.username}! You have access to this protected route."
+        }
+    except SQLAlchemyError as e:
+        logger.error(f"Database error: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error")
 
 
 @router.delete("/account", response_model=DetailResponse)
@@ -172,20 +182,24 @@ def delete_account(
     Returns:
         DetailResponse: Success message confirming the user deletion.
     """
-    target_user = db.query(User).filter(User.id == user.id).first()
+    try:
+        target_user = db.query(User).filter(User.id == user.id).first()
 
-    if not target_user:
-        logger.warning(
-            f"Attempted deletion of account with ID: {user.id} by user '{user.username}'."
-        )
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-        )
+        if not target_user:
+            logger.warning(
+                f"Attempted deletion of account with ID: {user.id} by user '{user.username}'."
+            )
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+            )
 
-    db.delete(target_user)
-    db.commit()
-    logger.info(f"User '{user.username}' deleted account (ID: {user.id}).")
-    return {"detail": f"Deleted account of '{target_user.username}' successfully"}
+        db.delete(target_user)
+        db.commit()
+        logger.info(f"User '{user.username}' deleted account (ID: {user.id}).")
+        return {"detail": f"Deleted account of '{target_user.username}' successfully"}
+    except SQLAlchemyError as e:
+        logger.error(f"Database error: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error")
 
 
 # Login route for user authentication and token generation
@@ -195,17 +209,21 @@ async def login_for_oauth_form(
 ):
     """Login for /docs . please DO NOT USE THIS ROUTE AT ALL
     """
-    db_user = db.query(User).filter(User.email == form_data.username).first()
+    try:
+        db_user = db.query(User).filter(User.email == form_data.username).first()
 
-    if not db_user or not verify_password(form_data.password, db_user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid credentials"
-        )
+        if not db_user or not verify_password(form_data.password, db_user.hashed_password):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid credentials"
+            )
 
-    # Create and return the API Key
-    access_token = create_api_key(data={"sub": db_user.username})
-    return {
-        "api_key": access_token,
-        "token_type": "bearer",
-        "username": db_user.username,
-    }
+        # Create and return the API Key
+        access_token = create_api_key(data={"sub": db_user.username})
+        return {
+            "api_key": access_token,
+            "token_type": "bearer",
+            "username": db_user.username,
+        }
+    except SQLAlchemyError as e:
+        logger.error(f"Database error: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error")

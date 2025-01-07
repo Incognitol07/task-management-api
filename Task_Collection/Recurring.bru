@@ -1,0 +1,27 @@
+meta {
+  name: Recurring
+  type: http
+  seq: 16
+}
+
+post {
+  url: http://127.0.0.1:8000/tasks/run-recurring
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJBYnJhaGFtIiwiZXhwIjoxNzM4ODUyMTQ0fQ.l_2sYanlgtgpjSVqHAI0NVky1fwrQc-JZ8ZNRBWWPvY
+}
+
+body:json {
+  {
+    "title": "Test",
+    "description": "Testing...",
+    "due_date": "2025-01-07T12:39:24.490Z",
+    "status": "pending",
+    "priority": "medium",
+    "is_recurring": false,
+    "recurrence_interval": "Every Tuesday"
+  }
+}
