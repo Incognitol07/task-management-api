@@ -5,7 +5,6 @@ from fastapi_limiter.depends import RateLimiter
 from sqlalchemy.exc import SQLAlchemyError
 from app.utils import logger, get_current_user, set_cache, get_cache, delete_cache
 from app.database import get_db
-import json
 from app.background_tasks import create_recurring_tasks, send_task_reminders
 # Create an instance of APIRouter to handle task routes
 router = APIRouter()

@@ -1,5 +1,6 @@
 # app/routers/task_dependency.py
 
+import json
 from fastapi import APIRouter, Depends, HTTPException, status
 from uuid import UUID
 from sqlalchemy.orm import Session
@@ -63,6 +64,14 @@ async def get_task_dependencies(
     Retrieves a list of tasks that the specified task depends on.
     """
     try:
+        cache_key = f"dependent-tasks:{user.id}"
+        cached_tasks = await get_cache(cache_key)
+
+        if cached_tasks:
+            # Deserialize the cached JSON string into a list of TaskResponse objects
+            tasks_data = json.loads(cached_tasks)  # Deserialize into a list of dicts
+            return [TaskResponse(**task) for task in tasks_data]  # Convert to TaskResponse models
+        
         task = db.query(Task).filter(Task.id == task_id, Task.user_id == user.id).first()
 
         if not task:
@@ -71,6 +80,9 @@ async def get_task_dependencies(
         dependencies = db.query(Task).join(
             TaskDependency, TaskDependency.dependent_task_id == Task.id
         ).filter(TaskDependency.task_id == task_id).all()
+
+        serialized_tasks = [task.to_dict() for task in dependencies]
+        await set_cache(cache_key, serialized_tasks)  # Ensure you serialize to JSON format
 
         return dependencies
     except SQLAlchemyError as e:

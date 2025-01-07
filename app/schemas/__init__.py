@@ -13,3 +13,6 @@ from .task import (
 from .notifications import (
     NotificationResponse
 )
+from .task_recurrence import (
+    TaskRecurrenceChange
+)
