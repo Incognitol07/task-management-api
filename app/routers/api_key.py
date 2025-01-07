@@ -20,9 +20,6 @@ from app.database import get_db
 # Create an instance of APIRouter to handle authentication routes
 router = APIRouter()
 
-
-
-
 @router.post("/regenerate", response_model=APIKeyResponse)
 def regenerate_api_key(
     db: Session = Depends(get_db), current_user: User = Depends(get_current_user)

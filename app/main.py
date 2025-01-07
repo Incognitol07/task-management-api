@@ -5,6 +5,8 @@ from fastapi import (
     Request
 )
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi_limiter import FastAPILimiter
+from redis.asyncio import Redis
 from contextlib import asynccontextmanager
 from app.database import engine, Base
 from app.config import settings
@@ -21,6 +23,8 @@ from app.routers import (
 async def lifespan(app: FastAPI):
     """Manage application lifespan events."""
     print("Starting up the application...")
+    redis = Redis.from_url("redis://localhost", decode_responses=True)
+    await FastAPILimiter.init(redis)
     try:
         yield
     finally:

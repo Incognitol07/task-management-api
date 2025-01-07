@@ -18,8 +18,8 @@ class TaskPriority(PyEnum):
 # Define the status options using Python's Enum
 class TaskStatus(PyEnum):
     PENDING = "pending"
-    COMPLETE = "complete" 
-
+    COMPLETE = "complete"
+    IN_PROGRESS = "in_progress"
 
 
 class Task(Base):
@@ -61,3 +61,19 @@ class Task(Base):
     # Relationships
     owner = relationship("User", back_populates="tasks")
     notifications = relationship("Notification", back_populates="task")
+
+    def to_dict(self):
+        """Convert the SQLAlchemy object to a dictionary."""
+        return {
+            "id": str(self.id),  # Convert UUID to string for JSON serialization
+            "title": self.title,
+            "description": self.description,
+            "due_date": self.due_date.isoformat() if self.due_date else None,  # Format datetime as string
+            "status": self.status.value,  # Enum value as string
+            "priority": self.priority.value,  # Enum value as string
+            "is_recurring": self.is_recurring,
+            "recurrence_interval": self.recurrence_interval,
+            "user_id": str(self.user_id),  # Convert UUID to string
+            "created_at": self.created_at.isoformat(),  # Format datetime as string
+            "updated_at": self.updated_at.isoformat(),  # Format datetime as string
+        }

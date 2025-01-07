@@ -189,7 +189,7 @@ def delete_account(
 
 
 # Login route for user authentication and token generation
-@router.post("/login")
+@router.post("/login", include_in_schema=False)
 async def login_for_oauth_form(
     form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)
 ):
@@ -205,7 +205,7 @@ async def login_for_oauth_form(
     # Create and return the API Key
     access_token = create_api_key(data={"sub": db_user.username})
     return {
-        "access_token": access_token,
+        "api_key": access_token,
         "token_type": "bearer",
         "username": db_user.username,
     }

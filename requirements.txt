@@ -9,3 +9,5 @@ uvicorn[standard]~=0.23
 pytest~=7.4
 requests
 alembic
+redis
+fastapi-limiter

@@ -1,0 +1,27 @@
+meta {
+  name: Remove Task
+  type: http
+  seq: 6
+}
+
+post {
+  url: http://127.0.0.1:8000/tasks
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJBYnJhaGFtIiwiZXhwIjoxNzM4ODQ4MDkzfQ.gGpC8EgizTRXor1iUMW7I4rp-nA_476sINuzpx4spG4
+}
+
+body:json {
+  {
+    "title": "Test",
+    "description": "Testing...",
+    "due_date": "2025-01-07T12:39:24.490Z",
+    "status": "pending",
+    "priority": "medium",
+    "is_recurring": false,
+    "recurrence_interval": "Every Tuesday"
+  }
+}

@@ -1,0 +1,19 @@
+meta {
+  name: Register
+  type: http
+  seq: 5
+}
+
+post {
+  url: http://127.0.0.1:8000/auth/register
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email":"ab.adelodun@gmail.com",
+    "password":"1234",
+    "username":"Abraham"
+  }
+}
