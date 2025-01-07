@@ -6,7 +6,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from app.database import Base, get_db
 from app.main import app
-from app.utils import hash_password
+from app.utils import hash_password, create_api_key
 from app.models import User
 
 
@@ -44,6 +44,7 @@ def client():
 def test_user():
     db = TestingSessionLocal()
     hashed_password = hash_password("testpassword")
+    api_key = create_api_key(data={"sub": "testuser"})
     user = User(username="testuser", email="testuser@example.com", hashed_password=hashed_password)
     db.add(user)
     db.commit()

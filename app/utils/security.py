@@ -1,11 +1,11 @@
 # app/utils/security.py
 
-import os
 import jwt
 from fastapi import Depends, HTTPException, status
 from datetime import datetime, timedelta
 from passlib.context import CryptContext
-from pydantic import ValidationError
+from .logging_config import logger
+from ..config import settings
 
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -41,129 +41,58 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 # JWT configuration
-SECRET_KEY = os.getenv(
-    "JWT_SECRET_KEY"
-)  # Ensure the JWT_SECRET_KEY is set in the environment
+SECRET_KEY = settings.JWT_SECRET_KEY
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 15  # Expiry time in minutes for access token
 
+# Token Expiry Configuration
+ACCESS_TOKEN_EXPIRE_MINUTES = 43200  # 30 days in minutes
 
-# Create an access token with expiration time
-def create_access_token(data: dict) -> str:
+# Secret Key Validation
+if not SECRET_KEY:
+    raise ValueError("JWT_SECRET_KEY environment variable is not set.")
+
+def create_api_key(data: dict) -> str:
     """
-    Create a JWT access token with an expiration time.
+    Generate a JWT token with the given data payload.
 
-    Args: \n
-        data (dict): The data to encode in the JWT token.
+    Args:
+        data (dict): Data to encode into the JWT.
 
     Returns:
-        str: The generated JWT access token.
+        str: Encoded JWT token.
     """
-    to_encode = (
-        data.copy()
-    )  # Create a copy of the data dictionary to avoid modifying the original
-    expire = datetime.now() + timedelta(
-        minutes=ACCESS_TOKEN_EXPIRE_MINUTES
-    )  # Use UTC time for consistency
-    to_encode.update({"token_type": "access"})
-    to_encode.update({"exp": expire})  # Add expiration time to the payload
+    to_encode = data.copy()
+    expire = datetime.now() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
-# Verify and decode the access token
-def verify_access_token(token: str) -> dict:
+def verify_api_key(token: str) -> dict:
     """
-    Verify and decode the JWT access token.
+    Verify and decode a JWT token.
 
-    Args: \n
-        token (str): The JWT token to verify and decode.
+    Args:
+        token (str): JWT token to verify.
 
     Returns:
-        dict: The decoded payload of the JWT token.
+        dict: Decoded payload if valid.
 
     Raises:
         HTTPException: If the token is expired, invalid, or malformed.
     """
     try:
-        payload = jwt.decode(
-            token, SECRET_KEY, algorithms=[ALGORITHM]
-        )  # Decode the token using the secret key
-        if payload["token_type"] != "access":
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token type for access",
-            )
-        return payload
+        return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     except jwt.ExpiredSignatureError:
+        logger.warning("Expired token: %s", token)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token has expired",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    except jwt.InvalidTokenError:
+    except jwt.PyJWTError:
+        logger.error("Invalid or malformed token: %s", token)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    except ValidationError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Malformed token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-# Refresh token expiration time (e.g., 7 days)
-REFRESH_TOKEN_EXPIRE_DAYS = 7
-
-# Create a refresh token with a longer expiration time
-def create_refresh_token(data: dict) -> str:
-    """
-    Create a JWT refresh token with a longer expiration time.
-
-    Args:
-        data (dict): The data to encode in the JWT token.
-
-    Returns:
-        str: The generated JWT refresh token.
-    """
-    to_encode = data.copy()
-    expire = datetime.now() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
-    to_encode.update({"token_type": "refresh"})
-    to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-
-# Verify and decode the refresh token
-def verify_refresh_token(token: str) -> dict:
-    """
-    Verify and decode the JWT refresh token.
-
-    Args:
-        token (str): The JWT token to verify and decode.
-
-    Returns:
-        dict: The decoded payload of the JWT token.
-
-    Raises:
-        HTTPException: If the token is expired, invalid, or malformed.
-    """
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        if payload["token_type"] != "refresh":
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token type for refresh",
-            )
-        return payload
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Refresh token has expired",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    except jwt.InvalidTokenError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid refresh token",
+            detail="Invalid or malformed token",
             headers={"WWW-Authenticate": "Bearer"},
         )

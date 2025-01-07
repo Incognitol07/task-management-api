@@ -1,7 +1,6 @@
 # app/schemas/auth.py
 
 from pydantic import BaseModel, EmailStr
-from typing import Optional
 
 # Base schema for user-related attributes
 class UserBase(BaseModel):
@@ -35,45 +34,20 @@ class UserLogin(UserBase):
     """
     password: str
 
-# Schema for user response (returns user info after successful creation or login)
-class UserResponse(UserBase):
-    """
-    Schema for the user response, which includes the user ID and an optional message.
-    
-    Attributes:
-        id (int): The unique identifier for the user.
-        message (Optional[str]): An optional message (e.g., confirmation or error message).
-    """
-    id: int
-    message: Optional[str]
-    
-    class Config:
-        # This allows Pydantic to pull attributes from ORM models
-        from_attributes = True
-
-class RegisterResponse(BaseModel):
+class RegisterResponse(UserBase):
     username:str
-    email: EmailStr
     message: str
 
 
 
 class LoginResponse(BaseModel):
-    access_token:str
-    refresh_token: str
+    api_key:str
     token_type: str
     username:str
-    user_id: int
 
 class DetailResponse(BaseModel):
     detail: str
 
-class RefreshResponse(BaseModel):
-    access_token:str
-    token_type: str
-
-class RefreshToken(BaseModel):
-    refresh_token: str
-
-class GoogleLogin(BaseModel):
-    url: str
+class APIKeyResponse(BaseModel):
+    detail: str
+    api_key: str

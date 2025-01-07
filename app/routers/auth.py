@@ -9,8 +9,6 @@ from app.schemas import (
     RegisterResponse,
     LoginResponse,
     DetailResponse,
-    RefreshResponse,
-    RefreshToken
 )
 from app.models import (
     User
@@ -19,9 +17,7 @@ from app.utils import (
     logger,
     hash_password,
     verify_password,
-    create_access_token,
-    create_refresh_token,
-    verify_refresh_token,
+    create_api_key,
     get_current_user
 )
 from app.database import get_db
@@ -66,8 +62,15 @@ async def register(user: UserCreate, db: Session = Depends(get_db)):
 
     # Hash the password before storing
     hashed_password = hash_password(user.password)
+
+    # Generate API Key
+    api_key = create_api_key(data={"sub": user.username})
+
     new_user = User(
-        username=user.username, email=user.email, hashed_password=hashed_password
+        username=user.username, 
+        email=user.email, 
+        hashed_password=hashed_password,
+        api_key = api_key
     )
 
     # Add the new user to the database
@@ -90,8 +93,7 @@ async def register(user: UserCreate, db: Session = Depends(get_db)):
     return {
         "username": user.username,
         "email": user.email,
-        "message": "Registered successfully",
-        "created_at": new_user.created_at,
+        "message": "Registered successfully"
     }
 
 
@@ -125,17 +127,14 @@ async def user_login(user: UserLogin, db: Session = Depends(get_db)):
         )
     
 
-    # Create access and refresh tokens
-    access_token = create_access_token(data={"sub": db_user.username})
-    refresh_token = create_refresh_token(data={"sub": db_user.username})
+    #Get API Key
+    api_key = db_user.api_key
 
     logger.info(f"User '{db_user.username}' logged in successfully.")
     return {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
+        "api_key": api_key,
         "token_type": "bearer",
-        "username": db_user.username,
-        "user_id": db_user.id,
+        "username": db_user.username
     }
 
 
@@ -154,41 +153,6 @@ async def protected_route(current_user: User = Depends(get_current_user)):
     return {
         "detail": f"Hello, {current_user.username}! You have access to this protected route."
     }
-
-
-@router.post("/user/refresh-token", response_model=RefreshResponse)
-async def get_refresh_token(token: RefreshToken, db: Session = Depends(get_db)):
-    """
-    Generate a new access token using a valid refresh token.
-
-    Args:
-        refresh_token (str): The JWT refresh token.
-
-    Raises:
-        HTTPException: If the refresh token is invalid.
-
-    Returns:
-        dict: A new access token.
-    """
-    payload = verify_refresh_token(token.refresh_token)
-    username: str = payload.get("sub")
-    if username is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid refresh token payload",
-        )
-
-    # Verify user existence
-    db_user = db.query(User).filter(User.username == username).first()
-    if db_user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
-        )
-
-    # Generate new access token
-    access_token = create_access_token(data={"sub": username})
-    return {"access_token": access_token, "token_type": "bearer"}
 
 
 @router.delete("/account", response_model=DetailResponse)
@@ -238,8 +202,8 @@ async def login_for_oauth_form(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid credentials"
         )
 
-    # Create and return the JWT access token
-    access_token = create_access_token(data={"sub": db_user.username})
+    # Create and return the API Key
+    access_token = create_api_key(data={"sub": db_user.username})
     return {
         "access_token": access_token,
         "token_type": "bearer",

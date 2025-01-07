@@ -8,7 +8,7 @@ from app.models import (
 )
 from app.utils import (
     logger,
-    verify_access_token
+    verify_api_key
 )
 from app.database import get_db
 
@@ -44,7 +44,7 @@ async def get_current_user(
         )
 
         # Verify the token and retrieve user information
-        payload = verify_access_token(token)
+        payload = verify_api_key(token)
         if payload is None:
             logger.warning("Token validation failed for a request.")
             raise credentials_exception
@@ -63,5 +63,5 @@ async def get_current_user(
         logger.info(f"User '{username}' authenticated successfully.")
         return db_user
     except Exception as e:
-        logger.error(f"Error during admin authentication: {e}")
+        logger.error(f"Error during user authentication: {e}")
         raise
