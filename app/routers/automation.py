@@ -16,11 +16,19 @@ rate_limiter = RateLimiter(times=1000, minutes=1)
 @router.post("/reminders", dependencies=[Depends(rate_limiter)])
 async def run_reminders():
     """Triggers a manual reminder for tasks due soon."""
-    send_task_reminders.delay()  # Trigger the Celery task asynchronously
-    return {"message": "Reminder task triggered."}
+    try:
+        send_task_reminders.delay()  # Trigger the Celery task asynchronously
+        return {"message": "Reminder task triggered."}
+    except SQLAlchemyError as e:
+        logger.error(f"Database error: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error")
 
 @router.post("/run-recurring", dependencies=[Depends(rate_limiter)])
 async def run_recurring_tasks():
     """Triggers the manual creation of recurring tasks."""
-    create_recurring_tasks.delay()  # Trigger the Celery task asynchronously
-    return {"message": "Recurring tasks creation triggered."}
+    try:
+        create_recurring_tasks.delay()  # Trigger the Celery task asynchronously
+        return {"message": "Recurring tasks creation triggered."}
+    except SQLAlchemyError as e:
+        logger.error(f"Database error: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error")

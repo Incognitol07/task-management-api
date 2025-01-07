@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from uuid import UUID
 from sqlalchemy import desc
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from app.schemas import (
     NotificationResponse
@@ -44,26 +45,30 @@ def get_notifications(
     Raises:
         HTTPException: If no unread notifications are found.
     """
-    notifications = (
-        db.query(Notification)
-        .filter(Notification.user_id == current_user.id, Notification.is_read == False)
-        .order_by(desc(Notification.id))
-        .offset(offset)
-        .limit(limit)
-        .all()
-    )
-
-    # Log the fetched unread notifications
-    logger.info(
-        f"Fetched {len(notifications)} unread notifications for user '{current_user.username}' (ID: {current_user.id})."
-    )
-
-    # If no unread notifications are found, return an empty list
-    if not notifications:
-        logger.warning(
-            f"No unread notifications found for user '{current_user.username}' (ID: {current_user.id})."
+    try:
+        notifications = (
+            db.query(Notification)
+            .filter(Notification.user_id == current_user.id, Notification.is_read == False)
+            .order_by(desc(Notification.id))
+            .offset(offset)
+            .limit(limit)
+            .all()
         )
-    return notifications
+
+        # Log the fetched unread notifications
+        logger.info(
+            f"Fetched {len(notifications)} unread notifications for user '{current_user.username}' (ID: {current_user.id})."
+        )
+
+        # If no unread notifications are found, return an empty list
+        if not notifications:
+            logger.warning(
+                f"No unread notifications found for user '{current_user.username}' (ID: {current_user.id})."
+            )
+        return notifications
+    except SQLAlchemyError as e:
+        logger.error(f"Database error: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error")
 
 
 # Route to mark a specific notification as read
@@ -87,30 +92,34 @@ def mark_notification_as_read(
     Raises:
         HTTPException: If the notification is not found or does not belong to the user.
     """
-    notification = (
-        db.query(Notification)
-        .filter(
-            Notification.id == notification_id, Notification.user_id == current_user.id
+    try:
+        notification = (
+            db.query(Notification)
+            .filter(
+                Notification.id == notification_id, Notification.user_id == current_user.id
+            )
+            .first()
         )
-        .first()
-    )
 
-    if not notification:
-        logger.error(
-            f"Notification {notification_id} not found for user '{current_user.username}' (ID: {current_user.id})."
+        if not notification:
+            logger.error(
+                f"Notification {notification_id} not found for user '{current_user.username}' (ID: {current_user.id})."
+            )
+            raise HTTPException(status_code=404, detail="Notification not found")
+
+        notification.is_read = True  # Mark the notification as read
+        db.commit()  # Commit the update to the database
+        db.refresh(notification)  # Refresh the notification object to get the updated state
+
+        # Log the action of marking the notification as read
+        logger.info(
+            f"Notification {notification_id} marked as read for user '{current_user.username}' (ID: {current_user.id})."
         )
-        raise HTTPException(status_code=404, detail="Notification not found")
 
-    notification.is_read = True  # Mark the notification as read
-    db.commit()  # Commit the update to the database
-    db.refresh(notification)  # Refresh the notification object to get the updated state
-
-    # Log the action of marking the notification as read
-    logger.info(
-        f"Notification {notification_id} marked as read for user '{current_user.username}' (ID: {current_user.id})."
-    )
-
-    return notification
+        return notification
+    except SQLAlchemyError as e:
+        logger.error(f"Database error: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error")
 
 
 # Route to mark all unread notifications as read
@@ -131,27 +140,31 @@ def mark_all_notifications_as_read(
     Raises:
         HTTPException: If no unread notifications are found.
     """
-    # Query all unread notifications for the user
-    notifications = (
-        db.query(Notification)
-        .filter(Notification.user_id == current_user.id, Notification.is_read == False)
-        .all()
-    )
+    try:
+        # Query all unread notifications for the user
+        notifications = (
+            db.query(Notification)
+            .filter(Notification.user_id == current_user.id, Notification.is_read == False)
+            .all()
+        )
 
-    if not notifications:
-        logger.warning(f"No unread notifications found for user {current_user.id}.")
-        raise HTTPException(status_code=404, detail="No unread notifications found")
+        if not notifications:
+            logger.warning(f"No unread notifications found for user {current_user.id}.")
+            raise HTTPException(status_code=404, detail="No unread notifications found")
 
-    # Mark all fetched notifications as read
-    for notification in notifications:
-        notification.is_read = True
+        # Mark all fetched notifications as read
+        for notification in notifications:
+            notification.is_read = True
 
-    db.commit()  # Commit the updates to the database
+        db.commit()  # Commit the updates to the database
 
-    # Log the action of marking all notifications as read
-    logger.info(
-        f"Marked all unread notifications as read for user '{current_user.username}' (ID: {current_user.id}). Total: {len(notifications)}."
-    )
+        # Log the action of marking all notifications as read
+        logger.info(
+            f"Marked all unread notifications as read for user '{current_user.username}' (ID: {current_user.id}). Total: {len(notifications)}."
+        )
 
-    # Return the list of updated notifications
-    return notifications
+        # Return the list of updated notifications
+        return notifications
+    except SQLAlchemyError as e:
+        logger.error(f"Database error: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error")

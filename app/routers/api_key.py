@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 from app.schemas import (
     APIKeyResponse,
 )
@@ -34,16 +35,20 @@ def regenerate_api_key(
     Returns:
         APIKeyResponse: Success message with the new API key.
     """
-    new_api_key = create_api_key(data={"sub": current_user.username})
-    current_user.api_key = new_api_key
-    db.commit()
-    db.refresh(current_user)
+    try:
+        new_api_key = create_api_key(data={"sub": current_user.username})
+        current_user.api_key = new_api_key
+        db.commit()
+        db.refresh(current_user)
 
-    logger.info(f"API key regenerated for user: {current_user.username}")
-    return {
-        "detail": "API key regenerated successfully",
-        "api_key": new_api_key,
-    }
+        logger.info(f"API key regenerated for user: {current_user.username}")
+        return {
+            "detail": "API key regenerated successfully",
+            "api_key": new_api_key,
+        }
+    except SQLAlchemyError as e:
+        logger.error(f"Database error: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error")
 
 
 @router.post("/revoke", response_model=APIKeyResponse)
@@ -60,9 +65,13 @@ def revoke_api_key(
     Returns:
         APIKeyResponse: Success message confirming revocation.
     """
-    current_user.api_key = None
-    db.commit()
-    db.refresh(current_user)
+    try:
+        current_user.api_key = None
+        db.commit()
+        db.refresh(current_user)
 
-    logger.info(f"API key revoked for user: {current_user.username}")
-    return {"detail": "API key revoked successfully"}
+        logger.info(f"API key revoked for user: {current_user.username}")
+        return {"detail": "API key revoked successfully"}
+    except SQLAlchemyError as e:
+        logger.error(f"Database error: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error")
